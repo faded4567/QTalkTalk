@@ -25,7 +25,7 @@ public:
     void init()
     {
         qDebug()<<"TalkServer is init!";
-        m_tcpServer.listen(QHostAddress("192.168.2.222"),1234);
+        m_tcpServer.listen(QHostAddress::Any,1234);
         connect(&m_tcpServer,&QTcpServer::newConnection,this,&TalkServer::DealNewConnection);
         //connect(&m_tcpServer,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT( TalkServer::DealConnectionError(QAbstractSocket::SocketError error)));
         qDebug()<<"TalkServer is running!!!";
@@ -71,6 +71,7 @@ public:
         qDebug()<<"DealPack() Begin!";
         qDebug()<<"DealPack():i= "<<i;
         auto info = m_stSocketinfo[i];
+        m_stSocketinfo[i].arrData.clear();
         for(int i=0;i<4;i++)
         {
             //打印协议内容
@@ -85,7 +86,7 @@ public:
             {
                 //取出数据包
                 QByteArray arr = info.arrData.mid(0,len);
-                DealRec(i,arr);
+                DealRec(arr,info);
                 info.arrData = info.arrData.mid(len);
             }
             else
@@ -94,10 +95,9 @@ public:
             }
         }
     }
-    void DealRec(int i,QByteArray arr)
+    void DealRec(QByteArray arr,TCPinfo info)
     {
-        qDebug()<<"DealPack Begin!";
-        auto info=m_stSocketinfo[i];
+        qDebug()<<"DealRec Begin!!!";
 
         char cmd = arr[3];
         qDebug()<<arr[3];
@@ -117,14 +117,16 @@ public:
 //        }
         else if(0x03 == cmd)
         {
+            //附加发送源
+            //data.insert(0,(info.socket->peerAddress().toString()+":").toUtf8());
             //将数据包发送给所有客户端
             QByteArray arrsendBuffer;//除发送者外的客户端
              //数据头
              arrsendBuffer.append(0x66);
              //长度
-             quint16 len=arr.size()+4;
-             arrsendBuffer.append(static_cast<char>(len&0x00FF));
-             arrsendBuffer.append(static_cast<char>(len&0XFF00>>8));
+             quint16 len=arr.size();
+             arrsendBuffer.append(static_cast<char>(len & 0x00FF));
+             arrsendBuffer.append(static_cast<char>(len>>8 & 0XFF00));
              //指令
              arrsendBuffer.append(0x03);
              //内容
@@ -139,13 +141,15 @@ public:
                 if(m_stSocketinfo[i].socket==info.socket)
                 {
                     //发送者
-                    arrsendBuffer[4]=0x02;
+                    arrsendBuffer[3]=0x02;
                     m_stSocketinfo[i].socket->write(arrsendBuffer);
                     continue;
                 }
                 //接受者
+                arrsendBuffer[3]=0x03;
                 m_stSocketinfo[i].socket->write(arrsendBuffer);
             }
+
         }
 
     }
