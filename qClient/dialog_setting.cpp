@@ -24,6 +24,8 @@ Dialog_setting::Dialog_setting(QWidget *parent) :
             }
         }
     }
+
+    ui->ServerIP->setText("192.168.0.104");
 }
 
 Dialog_setting::~Dialog_setting()

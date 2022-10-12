@@ -20,7 +20,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_tTcpSocket,&QAbstractSocket::connected,this,con);
 
     auto discon=[&](){
-        m_tTcpSocket.close();
         ui->textBrowser->append(m_strLocalIP+" is DisConnectted");
     };
     connect(&m_tTcpSocket,&QAbstractSocket::disconnected,this,discon);
@@ -41,6 +40,14 @@ void MainWindow::ConnetServer()
     //连接服务端
     //关闭上次socket
     m_tTcpSocket.close();
+
+    //获取连接所用的信息
+    m_strLocalIP = m_Dialog.getLocalIP();
+    m_strServerIP = m_Dialog.getServerIP();
+    m_iPort = m_Dialog.getServerPort();
+    qDebug()<<"m_strLocalIP="<<m_strLocalIP;
+    qDebug()<<"m_strServerIP="<<m_strServerIP;
+    qDebug()<<"m_iPort="<<m_iPort;
     //1.绑定
     m_tTcpSocket.bind(QHostAddress(m_strLocalIP));
     //2.连接
@@ -69,7 +76,7 @@ void MainWindow::DealClientRead()
     if(m_buffer.size()>=4 && m_buffer[0].operator== (0x66))
     {
         //将数据长度取出
-        quint16 len = (m_buffer[3]<<8 & 0xFF00)|static_cast<quint16>(m_buffer[2]);
+        quint16 len = (m_buffer[2]<<8 & 0xFF00)|static_cast<quint16>(m_buffer[1]);
         if(m_buffer.size()>=len)
         {
             //取出数据包
@@ -97,12 +104,12 @@ void MainWindow::DealPackage(QByteArray arr)
     else if(0x02 == cmd)
     {
        //发送的数据包
-       ui->textBrowser->append("<front color='green'>我发送:"+data);
+       ui->textBrowser->append("<font color='green'>我发送:"+data);
     }
     else if(0x03 == cmd)
     {
         //接收的数据包
-         ui->textBrowser->append("<front color='blue'>接收:"+data);
+         ui->textBrowser->append("<font color='blue'>接收:"+data);
     }
 }
 
@@ -125,8 +132,8 @@ void MainWindow::on_SendButton_clicked()
     //数据头
     arr.insert(0,0x66);
     //长度
-    arr.insert(1,static_cast<char>(len&0x00FF));
-    arr.insert(2,static_cast<char>(len&0XFF00>>8));
+    arr.insert(1,static_cast<char>(len & 0x00FF));
+    arr.insert(2,static_cast<char>(len>>8 & 0XFF00));
     //指令
     arr.insert(3,0x03);
 
@@ -154,13 +161,9 @@ void MainWindow::on_toolButton_clicked()
     //显示dialog
     if(m_Dialog.exec())
     {
-        m_strLocalIP = m_Dialog.getLocalIP();
-        m_strServerIP = m_Dialog.getServerIP();
-        m_iPort = m_Dialog.getServerPort();
+
         ConnetServer();
-        qDebug()<<"m_strLocalIP="<<m_strLocalIP;
-        qDebug()<<"m_strServerIP="<<m_strServerIP;
-        qDebug()<<"m_iPort="<<m_iPort;
+
     }
 
 }
